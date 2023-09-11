@@ -3,10 +3,16 @@ const axios = require('axios');
 require('dotenv').config();
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const api_key = process.env.GRIZZLY_API_KEY;
 
-const { major, countryCodes} = require('./utils/countryCodes');
+const { major, countryCodes } = require('./utils/countryCodes');
 const { majorServices, serviceCodes } = require('./utils/serviceCodes');
-console.log(majorServices);
+
+let country = '';
+let countryId = '';
+let serviceId = '';
+let service = '';
+
 
 bot.start(async (ctx) => {
   try {
@@ -66,6 +72,10 @@ bot.action(/country_(\d+)/, async (ctx) => {
   console.log(id);
   console.log(selectedCountry);
 
+  // set global country and countryId
+  country = selectedCountry;
+  countryId = id;
+
   ctx.answerCbQuery(`You selected ${selectedCountry}`);
 
   if (id) {
@@ -83,9 +93,20 @@ bot.action(/service_(\d+)/, async (ctx) => {
   console.log(id);
   console.log(selectedService);
 
+  // set global country and countryId
+  service = selectedService;
+  serviceId = id;
+
   ctx.answerCbQuery(`You selected ${selectedService}`);
+  const obj = await getPrice(countryId, serviceId);
+  console.log(countryId, serviceId);
+
+  const cost = obj[countryId.toString()][serviceId.toString()].cost;
+  await ctx.reply(`Cost is ${cost}₽`);
+  // await ctx.reply(`$${obj[countryId.toString()][serviceId.toString()].cost}`);
 
 });
+
 
 // Handle /guide command
 // bot.command('guide', (ctx) => {
@@ -113,7 +134,7 @@ bot.action(/service_(\d+)/, async (ctx) => {
 // });
 
 
-const allServices =  async(ctx) => {
+const allServices = async (ctx) => {
   try {
     const buttons = [];
 
@@ -138,6 +159,18 @@ const allServices =  async(ctx) => {
   }
 };
 
+const getPrice = async (countryId, serviceId) => {
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${countryId}&service=${serviceId}`;
+  try {
+    const response = await axios.get(api);
+    console.log(response.data);
+    return response.data;
+  }
+  catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
 // Start the bot
 bot.launch().then(() => {
   console.log('Bot is up and running!');
