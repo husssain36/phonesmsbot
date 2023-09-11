@@ -2,8 +2,11 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 
-const port = process.env.PORT;
+const port = 8000;
 const api_key = process.env.GRIZZLY_API_KEY;
+const bodyParser = require('body-parser');
+const { Telegraf } = require("telegraf");
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 app.get("/", (req, res) => {
   res.send("Grizzly Api");
@@ -69,6 +72,28 @@ app.get("/get-status/:id", async (req, res) => {
   }
 });
 
+app.get("/payment-success", async (req, res) => {
+  try {
+    const response = await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      chat_id: YOUR_CHAT_ID,
+      text: 'Payment was successful!',
+    });
+
+    // Handle the response from the Telegram API if needed
+    console.log(response.data);
+  } catch (error) {
+    console.error('Error notifying the bot:', error);
+  }
+
+  // Respond to the external service (e.g., with a success message)
+  res.status(200).send('Payment success notification received.');
+})
+
+// app.get("/payment-cancel", async (req, res) => {
+//   res.status(200).send('Payment was cancelled by the user.');
+// });
+
+
 app.listen(port, () => {
-  console.log(`App listening on http://localhost:${port}/ `);
+  console.log(`App listening on http://localhost:${port} `);
 });

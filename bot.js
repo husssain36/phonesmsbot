@@ -1,7 +1,8 @@
 const { Telegraf, Markup } = require('telegraf');
 const axios = require('axios');
 require('dotenv').config();
-
+const coinbaseApiKey = process.env.COINBASE_API_KEY;
+const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const api_key = process.env.GRIZZLY_API_KEY;
 
@@ -12,6 +13,38 @@ let country = '';
 let countryId = '';
 let serviceId = '';
 let service = '';
+let cost = '';
+
+async function createCoinbaseCharge(cost, id) {
+  try {
+    const response = await axios.post(
+      coinbaseApiUrl,
+      {
+        name: 'PHONESMSBOT',
+        description: 'Buy a number for all your needs',
+        pricing_type: 'fixed_price',
+        local_price: {
+          amount: parseFloat(cost), // Set your cryptocurrency amount here
+          currency: 'RUB', // Set your cryptocurrency here
+        },
+        redirect_url: `http://localhost:${process.env.port}/payment-success`,
+        cancel_url: `http://localhost:3000/payment-cancel`,
+      },
+
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CC-Api-Key': coinbaseApiKey,
+        },
+      }
+    );
+    console.log(response)
+    return response.data.data.hosted_url;
+  } catch (error) {
+    console.error('Error creating Coinbase charge:', error);
+    throw error;
+  }
+}
 
 
 bot.start(async (ctx) => {
@@ -101,10 +134,35 @@ bot.action(/service_(\d+)/, async (ctx) => {
   const obj = await getPrice(countryId, serviceId);
   console.log(countryId, serviceId);
 
-  const cost = obj[countryId.toString()][serviceId.toString()].cost;
+ cost = obj[countryId.toString()][serviceId.toString()].cost;
   await ctx.reply(`Cost is ${cost}₽`);
+
+  await ctx.reply('Do you want to make the payment? If yes type "/startpayment',);
   // await ctx.reply(`$${obj[countryId.toString()][serviceId.toString()].cost}`);
 
+});
+
+
+
+
+bot.command('startpayment',async (ctx) => {
+  const chatId = ctx.chat.id;
+
+  try {
+    // Check if the user sent a command to initiate a payment
+    const paymentLink = await createCoinbaseCharge(cost, ctx.chat.id);
+
+    if (paymentLink) {
+      // Send the payment link to the user
+      await ctx.reply(`To make a payment, click on the following link:\n${paymentLink}`);
+    } else {
+      // Handle the case where createCoinbaseCharge() did not return a valid link
+      await ctx.reply('Sorry, there was an issue processing your payment.');
+    }
+  } catch (error) {
+    console.error('Error creating payment link:', error);
+    await ctx.reply('Sorry, an error occurred while processing your payment.');
+  }
 });
 
 
