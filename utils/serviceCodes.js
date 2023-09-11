@@ -210,7 +210,7 @@ const serviceCodes = {
 
 
 const majorServices = [
-  "WhatsApp", ,
+  "Whatsapp",
   "Telegram",
   "Fiverr",
   "Facebook",
