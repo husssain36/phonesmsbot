@@ -17,7 +17,7 @@ app.get("/select-service", async (req, res) => {
   //   // utils/serviceCodes.js
 });
 
-app.get("/available-numbers/:country:/:service", async (req, res) => {
+app.get("/available-numbers/:country/:service", async (req, res) => {
   let country = req.query.country;
   let service = req.query.service;
   const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getNumber&service=${service}&country=${country}`;
@@ -33,7 +33,7 @@ app.get("/available-numbers/:country:/:service", async (req, res) => {
 app.get("/get-prices/:country/:service", async (req, res) => {
   let country = req.query.country;
   let service = req.query.service;
-  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&service=${service}&country=${country}`;
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${country}`;
   try {
     const response = await axios.post(api);
     res.status(200).json(response.data);
