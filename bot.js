@@ -5,7 +5,10 @@ const coinbaseApiKey = process.env.COINBASE_API_KEY;
 const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const api_key = process.env.GRIZZLY_API_KEY;
-
+const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+const port = process.env.port || 3000;
 const { major, countryCodes } = require('./utils/countryCodes');
 const { majorServices, serviceCodes } = require('./utils/serviceCodes');
 const url = "https://60de-103-153-151-112.ngrok.io"
@@ -234,6 +237,56 @@ const getPrice = async (countryId, serviceId) => {
     return { error: "Internal Server Error" };
   }
 };
+
+const getNumber = async (countryId, serviceId) => {
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${countryId}&service=${serviceId}`;
+  try {
+    const response = await axios.get(api);
+    console.log(response.data);
+    return response.data;
+  }
+  catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
+
+app.use(bodyParser.json());
+
+// Define your Coinbase Commerce webhook endpoint
+app.post('/coinbase-webhook', (req, res) => {
+  try {
+    const eventData = req.body;
+    const chatId = eventData.event.data.metadata.chatId;
+    console.log(chatId);
+    // Check the event type
+    if (eventData.event.type === 'charge:confirmed') {
+      // Payment has been confirmed, handle it here
+      console.log('Payment confirmed:', eventData);
+      bot.telegram.sendMessage(chatId, 'Your payment has been received successfully.');
+      bot.telegram.sendMessage(chatId, 'Your generated mobile number is:');
+      // Implement your logic to process the payment confirmation
+    } else if (eventData.event.type === 'charge:failed') {
+        // Payment has failed (canceled), handle it here
+        bot.telegram.sendMessage(chatId, 'Your payment has been canceled.');
+    } else {
+      // Handle other Coinbase Commerce events here
+    //   console.log('Other Coinbase event:', eventData);
+    }
+
+    // Respond with a success status
+    res.status(200).send('Webhook received successfully');
+  } catch (error) {
+    console.error('Error processing Coinbase webhook:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
+
 // Start the bot
 bot.launch().then(() => {
   console.log('Bot is up and running!');
