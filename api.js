@@ -89,10 +89,37 @@ app.get("/payment-success", async (req, res) => {
   res.status(200).send('Payment success notification received.');
 })
 
-// app.get("/payment-cancel", async (req, res) => {
-//   res.status(200).send('Payment was cancelled by the user.');
-// });
+app.get("/payment-cancel", async (req, res) => {
+  res.status(200).send('Payment was cancelled by the user.');
+  console.log(req.body)
+});
+app.use(bodyParser.json());
 
+// Define the Coinbase webhook endpoint
+app.post('/coinbase-webhook', (req, res) => {
+  // Verify the Coinbase webhook signature for security (optional but recommended)
+  // You can use the Coinbase SDK or libraries like 'coinbase-commerce-node' for verification
+
+  // Handle the Coinbase webhook data
+  const eventData = req.body;
+
+  // Check the payment status
+  if (eventData.event.type === 'charge:confirmed') {
+    // The payment has been successfully confirmed
+    // You can now fetch and display the phone number or perform other actions
+    console.log('Payment confirmed:', eventData.event.data);
+
+    // Trigger your fetch API to display the phone number here
+    // You can also send a notification to the user in the Telegram bot
+
+    res.status(200).send('Payment confirmed');
+  } else {
+    // Handle other Coinbase events or payment failures
+    console.log('Other Coinbase event:', eventData.event);
+
+    res.status(200).send('Event processed');
+  }
+});
 
 app.listen(port, () => {
   console.log(`App listening on http://localhost:${port} `);

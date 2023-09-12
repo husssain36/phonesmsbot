@@ -8,15 +8,16 @@ const api_key = process.env.GRIZZLY_API_KEY;
 
 const { major, countryCodes } = require('./utils/countryCodes');
 const { majorServices, serviceCodes } = require('./utils/serviceCodes');
-
+const url = "https://60de-103-153-151-112.ngrok.io"
 let country = '';
 let countryId = '';
 let serviceId = '';
 let service = '';
 let cost = '';
 
-async function createCoinbaseCharge(cost, id) {
+async function createCoinbaseCharge(cost, chatId) {
   try {
+    console.log("chatId", chatId);
     const response = await axios.post(
       coinbaseApiUrl,
       {
@@ -24,11 +25,15 @@ async function createCoinbaseCharge(cost, id) {
         description: 'Buy a number for all your needs',
         pricing_type: 'fixed_price',
         local_price: {
-          amount: parseFloat(cost), // Set your cryptocurrency amount here
+          // amount: parseFloat(cost) * 1.4,
+          amount: 10, // Set your cryptocurrency amount here
           currency: 'RUB', // Set your cryptocurrency here
         },
-        redirect_url: `http://localhost:${process.env.port}/payment-success`,
-        cancel_url: `http://localhost:3000/payment-cancel`,
+        metadata: {
+          chatId: chatId, // Capture the chat ID associated with the payment
+        },
+        redirect_url: `${url}/coinbase-webhook`,
+        cancel_url: `${url}/coinbase-webhook`,
       },
 
       {
@@ -38,7 +43,7 @@ async function createCoinbaseCharge(cost, id) {
         },
       }
     );
-    console.log(response)
+    console.log(response.data.data.metadata.chatId)
     return response.data.data.hosted_url;
   } catch (error) {
     console.error('Error creating Coinbase charge:', error);
