@@ -1,22 +1,22 @@
-const { Telegraf, Markup } = require('telegraf');
-const axios = require('axios');
-require('dotenv').config();
+const { Telegraf, Markup } = require("telegraf");
+const axios = require("axios");
+require("dotenv").config();
 const coinbaseApiKey = process.env.COINBASE_API_KEY;
 const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const api_key = process.env.GRIZZLY_API_KEY;
-const express = require('express');
-const bodyParser = require('body-parser');
+const express = require("express");
+const bodyParser = require("body-parser");
 const app = express();
 const port = process.env.port || 3000;
-const { major, countryCodes } = require('./utils/countryCodes');
-const { majorServices, serviceCodes } = require('./utils/serviceCodes');
-const url = "https://60de-103-153-151-112.ngrok.io"
-let country = '';
-let countryId = '';
-let serviceId = '';
-let service = '';
-let cost = '';
+const { major, countryCodes } = require("./utils/countryCodes");
+const { majorServices, serviceCodes } = require("./utils/serviceCodes");
+const url = "https://60de-103-153-151-112.ngrok.io";
+let country = "";
+let countryId = "";
+let serviceId = "";
+let service = "";
+let cost = "";
 
 async function createCoinbaseCharge(cost, chatId) {
   try {
@@ -24,13 +24,13 @@ async function createCoinbaseCharge(cost, chatId) {
     const response = await axios.post(
       coinbaseApiUrl,
       {
-        name: 'PHONESMSBOT',
-        description: 'Buy a number for all your needs',
-        pricing_type: 'fixed_price',
+        name: "PHONESMSBOT",
+        description: "Buy a number for all your needs",
+        pricing_type: "fixed_price",
         local_price: {
           // amount: parseFloat(cost) * 1.4,
-          amount: 10, // Set your cryptocurrency amount here
-          currency: 'RUB', // Set your cryptocurrency here
+          amount: cost, // Set your cryptocurrency amount here
+          currency: "RUB", // Set your cryptocurrency here
         },
         metadata: {
           chatId: chatId, // Capture the chat ID associated with the payment
@@ -41,19 +41,18 @@ async function createCoinbaseCharge(cost, chatId) {
 
       {
         headers: {
-          'Content-Type': 'application/json',
-          'X-CC-Api-Key': coinbaseApiKey,
+          "Content-Type": "application/json",
+          "X-CC-Api-Key": coinbaseApiKey,
         },
       }
     );
-    console.log(response.data.data.metadata.chatId)
+    console.log(response.data.data.metadata.chatId);
     return response.data.data.hosted_url;
   } catch (error) {
-    console.error('Error creating Coinbase charge:', error);
+    console.error("Error creating Coinbase charge:", error);
     throw error;
   }
 }
-
 
 bot.start(async (ctx) => {
   try {
@@ -92,22 +91,21 @@ bot.start(async (ctx) => {
     }
 
     // Send the second message with the inline keyboard
-    await ctx.reply('Select the country of the phone number 📞', {
+    await ctx.reply("Select the country of the phone number 📞", {
       reply_markup: {
         inline_keyboard: buttons,
       },
     });
 
-    console.log('All messages sent successfully!');
+    console.log("All messages sent successfully!");
   } catch (error) {
-    console.error('Error sending messages:', error);
+    console.error("Error sending messages:", error);
   }
 });
 
 bot.action(/country_(\d+)/, async (ctx) => {
-
   const countryIndex = parseInt(ctx.match[1]);
-  const selectedCountry = major[countryIndex];;
+  const selectedCountry = major[countryIndex];
 
   const id = countryCodes[selectedCountry];
   console.log(id);
@@ -119,16 +117,14 @@ bot.action(/country_(\d+)/, async (ctx) => {
 
   ctx.answerCbQuery(`You selected ${selectedCountry}`);
 
-  if (id) {
+  if (id !== NaN) {
     await allServices(ctx);
   }
-
 });
 
 bot.action(/service_(\d+)/, async (ctx) => {
-
   const serviceIndex = parseInt(ctx.match[1]);
-  const selectedService = majorServices[serviceIndex];;
+  const selectedService = majorServices[serviceIndex];
 
   const id = serviceCodes[selectedService];
   console.log(id);
@@ -142,18 +138,16 @@ bot.action(/service_(\d+)/, async (ctx) => {
   const obj = await getPrice(countryId, serviceId);
   console.log(countryId, serviceId);
 
- cost = obj[countryId.toString()][serviceId.toString()].cost;
+  cost = obj[countryId.toString()][serviceId.toString()].cost;
   await ctx.reply(`Cost is ${cost}₽`);
 
-  await ctx.reply('Do you want to make the payment? If yes type "/startpayment',);
+  await ctx.reply(
+    'Do you want to make the payment? If yes type "/startpayment'
+  );
   // await ctx.reply(`$${obj[countryId.toString()][serviceId.toString()].cost}`);
-
 });
 
-
-
-
-bot.command('startpayment',async (ctx) => {
+bot.command("startpayment", async (ctx) => {
   const chatId = ctx.chat.id;
 
   try {
@@ -162,17 +156,18 @@ bot.command('startpayment',async (ctx) => {
 
     if (paymentLink) {
       // Send the payment link to the user
-      await ctx.reply(`To make a payment, click on the following link:\n${paymentLink}`);
+      await ctx.reply(
+        `To make a payment, click on the following link:\n${paymentLink}`
+      );
     } else {
       // Handle the case where createCoinbaseCharge() did not return a valid link
-      await ctx.reply('Sorry, there was an issue processing your payment.');
+      await ctx.reply("Sorry, there was an issue processing your payment.");
     }
   } catch (error) {
-    console.error('Error creating payment link:', error);
-    await ctx.reply('Sorry, an error occurred while processing your payment.');
+    console.error("Error creating payment link:", error);
+    await ctx.reply("Sorry, an error occurred while processing your payment.");
   }
 });
-
 
 // Handle /guide command
 // bot.command('guide', (ctx) => {
@@ -199,7 +194,6 @@ bot.command('startpayment',async (ctx) => {
 //   });
 // });
 
-
 const allServices = async (ctx) => {
   try {
     const buttons = [];
@@ -214,14 +208,13 @@ const allServices = async (ctx) => {
     }
 
     // Send the second message with the inline keyboard
-    await ctx.reply('Select the service of the phone number 📞', {
+    await ctx.reply("Select the service of the phone number 📞", {
       reply_markup: {
         inline_keyboard: buttons,
       },
     });
-
   } catch (error) {
-    console.error('Error sending messages:', error);
+    console.error("Error sending messages:", error);
   }
 };
 
@@ -231,21 +224,19 @@ const getPrice = async (countryId, serviceId) => {
     const response = await axios.get(api);
     console.log(response.data);
     return response.data;
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
     return { error: "Internal Server Error" };
   }
 };
 
-const getNumber = async (countryId, serviceId) => {
-  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${countryId}&service=${serviceId}`;
+const getNumber = async (serviceId, countryId) => {
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getNumber&service=${serviceId}&country=${countryId}`;
   try {
     const response = await axios.get(api);
     console.log(response.data);
     return response.data;
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
     return { error: "Internal Server Error" };
   }
@@ -254,31 +245,43 @@ const getNumber = async (countryId, serviceId) => {
 app.use(bodyParser.json());
 
 // Define your Coinbase Commerce webhook endpoint
-app.post('/coinbase-webhook', (req, res) => {
+app.post("/coinbase-webhook", async (req, res) => {
   try {
     const eventData = req.body;
     const chatId = eventData.event.data.metadata.chatId;
     console.log(chatId);
     // Check the event type
-    if (eventData.event.type === 'charge:confirmed') {
+    if (eventData.event.type === "charge:confirmed") {
       // Payment has been confirmed, handle it here
-      console.log('Payment confirmed:', eventData);
-      bot.telegram.sendMessage(chatId, 'Your payment has been received successfully.');
-      bot.telegram.sendMessage(chatId, 'Your generated mobile number is:');
+
+      console.log("Payment confirmed:", eventData);
+      bot.telegram.sendMessage(
+        chatId,
+        "Your payment has been received successfully."
+      );
+      bot.telegram.sendMessage(chatId, "Your generated mobile number is:");
       // Implement your logic to process the payment confirmation
-    } else if (eventData.event.type === 'charge:failed') {
-        // Payment has failed (canceled), handle it here
-        bot.telegram.sendMessage(chatId, 'Your payment has been canceled.');
+    } else if (eventData.event.type === "charge:failed") {
+      bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
+      // Payment has failed (canceled), handle it here
+      
+      // let res = await getNumber(serviceId, countryId);
+      // let number = res.split(":")[2];
+      // let activationId = res.split(":")[1];
+
+      // bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
+      // bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+
     } else {
       // Handle other Coinbase Commerce events here
-    //   console.log('Other Coinbase event:', eventData);
+      //   console.log('Other Coinbase event:', eventData);
     }
 
     // Respond with a success status
-    res.status(200).send('Webhook received successfully');
+    res.status(200).send("Webhook received successfully");
   } catch (error) {
-    console.error('Error processing Coinbase webhook:', error);
-    res.status(500).send('Internal Server Error');
+    console.error("Error processing Coinbase webhook:", error);
+    res.status(500).send("Internal Server Error");
   }
 });
 
@@ -286,9 +289,7 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-
 // Start the bot
 bot.launch().then(() => {
-  console.log('Bot is up and running!');
+  console.log("Bot is up and running!");
 });
-
