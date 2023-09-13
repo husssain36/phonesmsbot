@@ -18,7 +18,7 @@ let serviceId = "";
 let service = "";
 let cost = "";
 let activationId = "";
-let number = ""
+
 async function createCoinbaseCharge(cost, chatId) {
   try {
     console.log("chatId", chatId);
@@ -126,6 +126,7 @@ bot.action(/country_(\d+)/, async (ctx) => {
 bot.action(/service_(\d+)/, async (ctx) => {
   const serviceIndex = parseInt(ctx.match[1]);
   const selectedService = majorServices[serviceIndex];
+  ctx.reply("Please wait until we send the number details ...");
 
   const id = serviceCodes[selectedService];
   console.log(id);
@@ -245,24 +246,24 @@ const getNumber = async (serviceId, countryId) => {
 
 const getActivationStatus = async (activationId) => {
   const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getStatus&id=${activationId}`;
-  
+  console.log(apiUrl);
+
   try {
     const response = await axios.get(apiUrl);
     const status = response.data;
-    
-    if (status.startsWith('STATUS_OK:')) {
-      const activationCode = status.split(':')[1];
+
+    if (status.startsWith("STATUS_OK:")) {
+      const activationCode = status.split(":")[1];
       return activationCode;
     } else {
       // Handle other statuses or errors if needed
       return null;
     }
   } catch (error) {
-    console.error('Error getting activation status:', error);
-    throw error;
+    console.error("Error getting activation status:", error);
+    return null;
   }
 };
-
 
 app.use(bodyParser.json());
 
@@ -286,23 +287,28 @@ app.post("/coinbase-webhook", async (req, res) => {
     } else if (eventData.event.type === "charge:failed") {
       bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
       // Payment has failed (canceled), handle it here
-      
-      let res = await getNumber(serviceId, countryId);
-      number = res.split(":")[2];
-      activationId = res.split(":")[1];
 
-      console.log(activationId);
-      bot.telegram.sendMessage(chatId, `Your response ${res}`);
-      bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
-      bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+      await getOTP(serviceId, countryId, chatId);
+      // let res = await getNumber(serviceId, countryId);
+      // let number = res.split(":")[2];
+      // activationId = res.split(":")[1];
 
-      await bot.telegram.sendMessage(chatId, "Would you like to request an OTP? Request Only After Requesting OTP From the Service", {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: 'Request OTP', callback_data: 'request_otp' }],
-          ],
-        },
-      });
+      // console.log(activationId);
+      // bot.telegram.sendMessage(chatId, `Your response ${res}`);
+      // bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
+      // bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+
+      // await bot.telegram.sendMessage(
+      //   chatId,
+      //   "Would you like to request an OTP? Request Only After Requesting OTP From the Service",
+      //   {
+      //     reply_markup: {
+      //       inline_keyboard: [
+      //         [{ text: "Request OTP", callback_data: "request_otp" }],
+      //       ],
+      //     },
+      //   }
+      // );
     } else {
       // Handle other Coinbase Commerce events here
       //   console.log('Other Coinbase event:', eventData);
@@ -316,23 +322,107 @@ app.post("/coinbase-webhook", async (req, res) => {
   }
 });
 
-bot.action('request_otp', async (ctx) => {
+bot.action("request_otp", async (ctx) => {
   const chatId = ctx.chat.id;
 
   // Send a message indicating that OTP request is in progress
-  await ctx.reply('Requesting OTP...');
+  await ctx.reply("Requesting OTP...");
 
   // Run the getOtp function
   const activationCode = await getActivationStatus(activationId);
 
   if (activationCode) {
-    // Send the activation code to the user
-    await ctx.reply(`Your OTP is: ${activationCode}`);
+
+    // await ctx.reply(`Your OTP is: ${activationCode}`);
+    await bot.telegram.sendMessage(
+      chatId,
+      "Would you like to request an OTP again?",
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "Request OTP Again", callback_data: "resend_otp" }]],
+        },
+      }
+    );
   } else {
     // Handle the case where OTP request or activation failed
-    await ctx.reply('OTP request failed or is still in progress, please request otp once again..');
+    await ctx.reply(
+      "OTP request failed or is still in progress, please request otp once again.."
+    );
   }
 });
+
+bot.action("resend_otp", async (ctx) => {
+  const chatId = ctx.chat.id;
+  await ctx.reply("Requesting OTP...");
+
+  // Run the getOtp function
+  const activationCode = await getActivationStatus(activationId);
+
+
+
+
+
+});
+
+async function getOTP(serviceId, countryId, chatId) {
+  let res = await getNumber(serviceId, countryId);
+  let number = res.split(":")[2];
+  let activationId = res.split(":")[1];
+
+  // check if activation id is null
+  if (activationId === null || activationId === undefined) {
+    await getOTP(serviceId, countryId);
+  }
+
+  bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+
+
+  // simple interval for checking the otp after user click on request otp on service.
+  // const interval = setInterval(async () => {
+  //   const activationCode = await getActivationStatus(activationId);
+  //   if (activationCode) {
+  //     await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
+  //     clearInterval(interval);
+  //     return;
+  //   }
+  // }, 5000);
+
+
+//nested interval.
+  const timeOutInterval = setInterval(() => {
+
+  const otpInterval = setInterval(async () => {
+    const activationCode = await getActivationStatus(activationId);
+    if (activationCode) {
+      await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
+      clearInterval(otpInterval);
+      return;
+    }
+  }, 5000);
+
+  }, 60000);
+
+  setTimeout(() => {
+    clearInterval(timeOutInterval);
+    // setStatus to expired
+    expireNumber(activationId);
+    bot.telegram.sendMessage(chatId, "OTP not received, please try again");
+    bot.telegram.sendMessage(chatId, "We are getting a new number for you 😉");
+    getOTP(serviceId, countryId, chatId);
+  }, 60000);
+};
+
+const expireNumber = async (activationId) => {
+  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=setStatus&status=8&id=${activationId}`;
+  try {
+    const response = await axios.get(apiUrl);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
 
 
 app.listen(port, () => {

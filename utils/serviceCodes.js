@@ -219,6 +219,7 @@ const majorServices = [
   "Twitch",
   "Google",
   "Yahoo",
+  "LinkedIN",
 ]
 module.exports = {
   serviceCodes,
