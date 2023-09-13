@@ -48,7 +48,7 @@ const serviceCodes = {
   "EasyPay": "rz",
   "eBay": "dh",
   "Ebay-kleinanzeigen": "gr_dh",
-  "facebook": "fb",
+  "Facebook": "fb",
   "Feeld": "se",
   "Fiverr": "cn",
   "Flowwow": "gr_fw",

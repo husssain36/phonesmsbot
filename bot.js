@@ -17,7 +17,8 @@ let countryId = "";
 let serviceId = "";
 let service = "";
 let cost = "";
-
+let activationId = "";
+let number = ""
 async function createCoinbaseCharge(cost, chatId) {
   try {
     console.log("chatId", chatId);
@@ -242,6 +243,27 @@ const getNumber = async (serviceId, countryId) => {
   }
 };
 
+const getActivationStatus = async (activationId) => {
+  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getStatus&id=${activationId}`;
+  
+  try {
+    const response = await axios.get(apiUrl);
+    const status = response.data;
+    
+    if (status.startsWith('STATUS_OK:')) {
+      const activationCode = status.split(':')[1];
+      return activationCode;
+    } else {
+      // Handle other statuses or errors if needed
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting activation status:', error);
+    throw error;
+  }
+};
+
+
 app.use(bodyParser.json());
 
 // Define your Coinbase Commerce webhook endpoint
@@ -265,13 +287,22 @@ app.post("/coinbase-webhook", async (req, res) => {
       bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
       // Payment has failed (canceled), handle it here
       
-      // let res = await getNumber(serviceId, countryId);
-      // let number = res.split(":")[2];
-      // let activationId = res.split(":")[1];
+      let res = await getNumber(serviceId, countryId);
+      number = res.split(":")[2];
+      activationId = res.split(":")[1];
 
-      // bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
-      // bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+      console.log(activationId);
+      bot.telegram.sendMessage(chatId, `Your response ${res}`);
+      bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
+      bot.telegram.sendMessage(chatId, `Your number is +${number}`);
 
+      await bot.telegram.sendMessage(chatId, "Would you like to request an OTP? Request Only After Requesting OTP From the Service", {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'Request OTP', callback_data: 'request_otp' }],
+          ],
+        },
+      });
     } else {
       // Handle other Coinbase Commerce events here
       //   console.log('Other Coinbase event:', eventData);
@@ -284,6 +315,25 @@ app.post("/coinbase-webhook", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+bot.action('request_otp', async (ctx) => {
+  const chatId = ctx.chat.id;
+
+  // Send a message indicating that OTP request is in progress
+  await ctx.reply('Requesting OTP...');
+
+  // Run the getOtp function
+  const activationCode = await getActivationStatus(activationId);
+
+  if (activationCode) {
+    // Send the activation code to the user
+    await ctx.reply(`Your OTP is: ${activationCode}`);
+  } else {
+    // Handle the case where OTP request or activation failed
+    await ctx.reply('OTP request failed or is still in progress, please request otp once again..');
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
