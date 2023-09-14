@@ -18,6 +18,7 @@ let serviceId = "";
 let service = "";
 let cost = "";
 let activationId = "";
+let status = "";
 
 async function createCoinbaseCharge(cost, chatId) {
   try {
@@ -146,7 +147,6 @@ bot.action(/service_(\d+)/, async (ctx) => {
   await ctx.reply(
     'Do you want to make the payment? If yes type "/startpayment'
   );
-  // await ctx.reply(`$${obj[countryId.toString()][serviceId.toString()].cost}`);
 });
 
 bot.command("startpayment", async (ctx) => {
@@ -170,31 +170,6 @@ bot.command("startpayment", async (ctx) => {
     await ctx.reply("Sorry, an error occurred while processing your payment.");
   }
 });
-
-// Handle /guide command
-// bot.command('guide', (ctx) => {
-//   ctx.reply('Here is the guide:');
-// });
-
-// handle buy number
-// bot.command('buynumber', async (ctx) => {
-//   await ctx.reply('Select the country of the phone number 📞', {
-//     reply_markup: {
-//       inline_keyboard: [
-//         [
-//           { text: 'India', callback_data: 'india' },
-//           { text: 'Russia', callback_data: 'russia' },
-//           { text: 'UK', callback_data: 'uk' },
-//         ],
-//         [
-//           { text: 'USA', callback_data: 'usa' },
-//           { text: 'Australia', callback_data: 'australia' },
-//           { text: 'Canada', callback_data: 'canada' },
-//         ],
-//       ],
-//     },
-//   });
-// });
 
 const allServices = async (ctx) => {
   try {
@@ -250,8 +225,8 @@ const getActivationStatus = async (activationId) => {
 
   try {
     const response = await axios.get(apiUrl);
-    const status = response.data;
-
+    status = response.data;
+    console.log(status);
     if (status.startsWith("STATUS_OK:")) {
       const activationCode = status.split(":")[1];
       return activationCode;
@@ -364,53 +339,100 @@ bot.action("resend_otp", async (ctx) => {
 
 });
 
+// async function getOTP(serviceId, countryId, chatId) {
+//   let res = await getNumber(serviceId, countryId);
+//   let number = res.split(":")[2];
+//   let activationId = res.split(":")[1];
+
+//   // Check if activation id is null
+//   if (!activationId) {
+//     await getOTP(serviceId, countryId, chatId);
+//     return;
+//   }
+
+//   bot.telegram.sendMessage(chatId, `Your number is +${number}`);
+
+//   const otpInterval = setInterval(async () => {
+//     let activationCode = await getActivationStatus(activationId);
+//     if (activationCode) {
+//       await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
+//       clearInterval(otpInterval);
+//     }
+//   }, 10000);
+
+//   // Set a timeout to stop checking after 1 minute
+//   setTimeout(async () => {
+//     clearInterval(otpInterval);
+
+//     if (status.startsWith("STATUS_WAIT_CODE")) {
+//       console.log("Activation status still waiting. Getting a new number...");
+//       await expireNumber(activationId);
+//       bot.telegram.sendMessage(chatId, "OTP not received, please try again");
+//       bot.telegram.sendMessage(chatId, "We are getting a new number for you 😉");
+//       getOTP(serviceId, countryId, chatId);
+//     } else if (status.startsWith("STATUS_OK:")) {
+//       bot.telegram.sendMessage(chatId, "OTP was sent and validated successfully");
+//     } else {
+//       console.log("Invalid final status:", status);
+//     }
+//   }, 120000);
+// }
+
 async function getOTP(serviceId, countryId, chatId) {
-  let res = await getNumber(serviceId, countryId);
-  let number = res.split(":")[2];
-  let activationId = res.split(":")[1];
+  try {
+    let res = await getNumber(serviceId, countryId);
+    let number = res.split(":")[2];
+    let activationId = res.split(":")[1];
 
-  // check if activation id is null
-  if (activationId === null || activationId === undefined) {
-    await getOTP(serviceId, countryId);
-  }
-
-  bot.telegram.sendMessage(chatId, `Your number is +${number}`);
-
-
-  // simple interval for checking the otp after user click on request otp on service.
-  // const interval = setInterval(async () => {
-  //   const activationCode = await getActivationStatus(activationId);
-  //   if (activationCode) {
-  //     await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
-  //     clearInterval(interval);
-  //     return;
-  //   }
-  // }, 5000);
-
-
-//nested interval.
-  const timeOutInterval = setInterval(() => {
-
-  const otpInterval = setInterval(async () => {
-    const activationCode = await getActivationStatus(activationId);
-    if (activationCode) {
-      await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
-      clearInterval(otpInterval);
+    // Check if activation id is null
+    if (!activationId) {
+      await getOTP(serviceId, countryId, chatId);
       return;
     }
-  }, 5000);
 
-  }, 60000);
+    bot.telegram.sendMessage(chatId, `Your number is +${number}`);
 
-  setTimeout(() => {
-    clearInterval(timeOutInterval);
-    // setStatus to expired
-    expireNumber(activationId);
-    bot.telegram.sendMessage(chatId, "OTP not received, please try again");
-    bot.telegram.sendMessage(chatId, "We are getting a new number for you 😉");
-    getOTP(serviceId, countryId, chatId);
-  }, 60000);
-};
+    const otpInterval = setInterval(async () => {
+      let activationCode = await getActivationStatus(activationId);
+      if (activationCode) {
+        await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
+        clearInterval(otpInterval);
+      }
+    }, 10000);
+
+    // Set a timeout to stop checking after 1 minute
+    setTimeout(async () => {
+      clearInterval(otpInterval);
+
+      if (status.startsWith("STATUS_WAIT_CODE")) {
+        console.log("Activation status still waiting. Getting a new number...");
+        await expireNumber(activationId);
+
+        // Create an inline keyboard with a "Generate New Number" button
+        await bot.telegram.sendMessage(
+          chatId,
+          "Would you like to request a new number?",
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: "Request Number Again", callback_data: "request_number" }]],
+            },
+          }
+        );
+      } else if (status.startsWith("STATUS_OK:")) {
+        bot.telegram.sendMessage(chatId, "OTP was sent and validated successfully");
+      } else {
+        console.log("Invalid final status:", status);
+      }
+    }, 120000);
+  } catch (error) {
+    console.error("Error in getOTP:", error);
+  }
+}
+bot.action("request_number", async (ctx) => {
+  const chatId = ctx.chat.id;
+
+  await getOTP(serviceId, countryId, chatId);
+});
 
 const expireNumber = async (activationId) => {
   const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=setStatus&status=8&id=${activationId}`;
