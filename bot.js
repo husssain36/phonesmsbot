@@ -56,6 +56,75 @@ async function createCoinbaseCharge(cost, chatId) {
   }
 }
 
+const allServices = async (ctx) => {
+  try {
+    const buttons = [];
+
+    // Create inline keyboard buttons with three countries per row
+    for (let i = 0; i < majorServices.length; i += 3) {
+      const row = majorServices.slice(i, i + 3).map((service, index) => ({
+        text: service,
+        callback_data: `service_${i + index}`,
+      }));
+      buttons.push(row);
+    }
+
+    // Send the second message with the inline keyboard
+    await ctx.reply("Select the service of the phone number 📞", {
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+  } catch (error) {
+    console.error("Error sending messages:", error);
+  }
+};
+
+const getPrice = async (countryId, serviceId) => {
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${countryId}&service=${serviceId}`;
+  try {
+    const response = await axios.get(api);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
+
+const getNumber = async (serviceId, countryId) => {
+  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getNumber&service=${serviceId}&country=${countryId}`;
+  try {
+    const response = await axios.get(api);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
+
+const getActivationStatus = async (activationId) => {
+  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getStatus&id=${activationId}`;
+  console.log(apiUrl);
+
+  try {
+    const response = await axios.get(apiUrl);
+    status = response.data;
+    console.log(status);
+    if (status.startsWith("STATUS_OK:")) {
+      const activationCode = status.split(":")[1];
+      return activationCode;
+    } else {
+      // Handle other statuses or errors if needed
+      return null;
+    }
+  } catch (error) {
+    console.error("Error getting activation status:", error);
+    return null;
+  }
+};
+
 bot.start(async (ctx) => {
   try {
     // Send the first message
@@ -145,11 +214,16 @@ bot.action(/service_(\d+)/, async (ctx) => {
   await ctx.reply(`Cost is ${cost}₽`);
 
   await ctx.reply(
-    'Do you want to make the payment? If yes type "/startpayment'
+      "To make a payment, click on the following button",
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "Make Payment", callback_data: "make_payment" }]],
+        },
+      }
   );
 });
 
-bot.command("startpayment", async (ctx) => {
+bot.action("make_payment", async (ctx) => {
   const chatId = ctx.chat.id;
 
   try {
@@ -159,7 +233,7 @@ bot.command("startpayment", async (ctx) => {
     if (paymentLink) {
       // Send the payment link to the user
       await ctx.reply(
-        `To make a payment, click on the following link:\n${paymentLink}`
+        `To make a payment, click on the following link ${paymentLink}`
       );
     } else {
       // Handle the case where createCoinbaseCharge() did not return a valid link
@@ -171,74 +245,7 @@ bot.command("startpayment", async (ctx) => {
   }
 });
 
-const allServices = async (ctx) => {
-  try {
-    const buttons = [];
 
-    // Create inline keyboard buttons with three countries per row
-    for (let i = 0; i < majorServices.length; i += 3) {
-      const row = majorServices.slice(i, i + 3).map((service, index) => ({
-        text: service,
-        callback_data: `service_${i + index}`,
-      }));
-      buttons.push(row);
-    }
-
-    // Send the second message with the inline keyboard
-    await ctx.reply("Select the service of the phone number 📞", {
-      reply_markup: {
-        inline_keyboard: buttons,
-      },
-    });
-  } catch (error) {
-    console.error("Error sending messages:", error);
-  }
-};
-
-const getPrice = async (countryId, serviceId) => {
-  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getPrices&country=${countryId}&service=${serviceId}`;
-  try {
-    const response = await axios.get(api);
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return { error: "Internal Server Error" };
-  }
-};
-
-const getNumber = async (serviceId, countryId) => {
-  const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getNumber&service=${serviceId}&country=${countryId}`;
-  try {
-    const response = await axios.get(api);
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return { error: "Internal Server Error" };
-  }
-};
-
-const getActivationStatus = async (activationId) => {
-  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getStatus&id=${activationId}`;
-  console.log(apiUrl);
-
-  try {
-    const response = await axios.get(apiUrl);
-    status = response.data;
-    console.log(status);
-    if (status.startsWith("STATUS_OK:")) {
-      const activationCode = status.split(":")[1];
-      return activationCode;
-    } else {
-      // Handle other statuses or errors if needed
-      return null;
-    }
-  } catch (error) {
-    console.error("Error getting activation status:", error);
-    return null;
-  }
-};
 
 app.use(bodyParser.json());
 
@@ -264,26 +271,7 @@ app.post("/coinbase-webhook", async (req, res) => {
       // Payment has failed (canceled), handle it here
 
       await getOTP(serviceId, countryId, chatId);
-      // let res = await getNumber(serviceId, countryId);
-      // let number = res.split(":")[2];
-      // activationId = res.split(":")[1];
 
-      // console.log(activationId);
-      // bot.telegram.sendMessage(chatId, `Your response ${res}`);
-      // bot.telegram.sendMessage(chatId, `Your activation id is ${activationId}`);
-      // bot.telegram.sendMessage(chatId, `Your number is +${number}`);
-
-      // await bot.telegram.sendMessage(
-      //   chatId,
-      //   "Would you like to request an OTP? Request Only After Requesting OTP From the Service",
-      //   {
-      //     reply_markup: {
-      //       inline_keyboard: [
-      //         [{ text: "Request OTP", callback_data: "request_otp" }],
-      //       ],
-      //     },
-      //   }
-      // );
     } else {
       // Handle other Coinbase Commerce events here
       //   console.log('Other Coinbase event:', eventData);
@@ -339,44 +327,7 @@ bot.action("resend_otp", async (ctx) => {
 
 });
 
-// async function getOTP(serviceId, countryId, chatId) {
-//   let res = await getNumber(serviceId, countryId);
-//   let number = res.split(":")[2];
-//   let activationId = res.split(":")[1];
 
-//   // Check if activation id is null
-//   if (!activationId) {
-//     await getOTP(serviceId, countryId, chatId);
-//     return;
-//   }
-
-//   bot.telegram.sendMessage(chatId, `Your number is +${number}`);
-
-//   const otpInterval = setInterval(async () => {
-//     let activationCode = await getActivationStatus(activationId);
-//     if (activationCode) {
-//       await bot.telegram.sendMessage(chatId, `Your OTP is: ${activationCode}`);
-//       clearInterval(otpInterval);
-//     }
-//   }, 10000);
-
-//   // Set a timeout to stop checking after 1 minute
-//   setTimeout(async () => {
-//     clearInterval(otpInterval);
-
-//     if (status.startsWith("STATUS_WAIT_CODE")) {
-//       console.log("Activation status still waiting. Getting a new number...");
-//       await expireNumber(activationId);
-//       bot.telegram.sendMessage(chatId, "OTP not received, please try again");
-//       bot.telegram.sendMessage(chatId, "We are getting a new number for you 😉");
-//       getOTP(serviceId, countryId, chatId);
-//     } else if (status.startsWith("STATUS_OK:")) {
-//       bot.telegram.sendMessage(chatId, "OTP was sent and validated successfully");
-//     } else {
-//       console.log("Invalid final status:", status);
-//     }
-//   }, 120000);
-// }
 
 async function getOTP(serviceId, countryId, chatId) {
   try {
