@@ -9,9 +9,11 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
 const port = process.env.port || 3000;
+const url = process.env.COINBASE_WEBHOOK
 const { major, countryCodes } = require("./utils/countryCodes");
 const { majorServices, serviceCodes } = require("./utils/serviceCodes");
-const url = "https://60de-103-153-151-112.ngrok.io";
+const path = require('path');
+app.use(express.static('public'));
 let country = "";
 let countryId = "";
 let serviceId = "";
@@ -37,8 +39,8 @@ async function createCoinbaseCharge(cost, chatId) {
         metadata: {
           chatId: chatId, // Capture the chat ID associated with the payment
         },
-        redirect_url: `${url}/coinbase-webhook`,
-        cancel_url: `${url}/coinbase-webhook`,
+        redirect_url: `http://localhost:3000/success`,
+        cancel_url: `http://localhost:3000/failure`,
       },
 
       {
@@ -124,6 +126,19 @@ const getActivationStatus = async (activationId) => {
     return null;
   }
 };
+const expireNumber = async (activationId) => {
+  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=setStatus&status=8&id=${activationId}`;
+  try {
+    const response = await axios.get(apiUrl);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return { error: "Internal Server Error" };
+  }
+};
+
+
 
 bot.start(async (ctx) => {
   try {
@@ -246,7 +261,6 @@ bot.action("make_payment", async (ctx) => {
 });
 
 
-
 app.use(bodyParser.json());
 
 // Define your Coinbase Commerce webhook endpoint
@@ -264,7 +278,8 @@ app.post("/coinbase-webhook", async (req, res) => {
         chatId,
         "Your payment has been received successfully."
       );
-      bot.telegram.sendMessage(chatId, "Your generated mobile number is:");
+      await getOTP(serviceId, countryId, chatId);
+
       // Implement your logic to process the payment confirmation
     } else if (eventData.event.type === "charge:failed") {
       bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
@@ -320,11 +335,6 @@ bot.action("resend_otp", async (ctx) => {
 
   // Run the getOtp function
   const activationCode = await getActivationStatus(activationId);
-
-
-
-
-
 });
 
 
@@ -340,9 +350,8 @@ async function getOTP(serviceId, countryId, chatId) {
       await getOTP(serviceId, countryId, chatId);
       return;
     }
-
     bot.telegram.sendMessage(chatId, `Your number is +${number}`);
-
+    bot.telegram.sendMessage(chatId, "If due to some reason the number is expired or it doesn't work, Don't worry you will get the option to generate a new number in 2 min....");
     const otpInterval = setInterval(async () => {
       let activationCode = await getActivationStatus(activationId);
       if (activationCode) {
@@ -385,24 +394,32 @@ bot.action("request_number", async (ctx) => {
   await getOTP(serviceId, countryId, chatId);
 });
 
-const expireNumber = async (activationId) => {
-  const apiUrl = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=setStatus&status=8&id=${activationId}`;
-  try {
-    const response = await axios.get(apiUrl);
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return { error: "Internal Server Error" };
-  }
-};
+app.get('/coinbase-webhook', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'coinbase-webhook.html'));
+});
+
+app.get('/success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'success.html'));
+});
+
+app.get('/failure', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'failure.html'));
+});
+
+
 
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
+// app.listen(url, () => {
+//   console.log("listening to webhook")  
+// }  
+// )
+
 // Start the bot
 bot.launch().then(() => {
   console.log("Bot is up and running!");
 });
+
