@@ -217,7 +217,7 @@ const majorServices = [
   "Instagram",
   "Twitter",
   "Twitch",
-  "Google",
+  "Zomato",
   "Yahoo",
   "LinkedIN",
 ]

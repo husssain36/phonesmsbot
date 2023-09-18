@@ -5,7 +5,6 @@ const coinbaseApiKey = process.env.COINBASE_API_KEY;
 const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-bot.telegram.setWebhook("https://dull-rose-abalone-gown.cyclic.cloud/")
 
 bot.use(session({
   defaultSession: () => ({
@@ -23,9 +22,6 @@ bot.use(session({
 }));
 
 // Start the bot
-bot.launch().then(() => {
-  console.log("Bot is up and running!");
-});
 
 const api_key = process.env.GRIZZLY_API_KEY;
 const express = require("express");
@@ -36,7 +32,7 @@ app.use(express.static('public'));
 const port = process.env.port || 3000;
 const { major, countryCodes } = require("./utils/countryCodes");
 const { majorServices, serviceCodes } = require("./utils/serviceCodes");
-const url = "https://dull-rose-abalone-gown.cyclic.cloud";
+const url = process.env.DEPLOYED_URL
 
 async function createCoinbaseCharge(cost, chatId, countryId, serviceId) {
   try {
@@ -114,7 +110,9 @@ const getPrice = async (countryId, serviceId) => {
 
 const getNumber = async (serviceId, countryId) => {
   const api = `https://api.grizzlysms.com/stubs/handler_api.php?api_key=${api_key}&action=getNumber&service=${serviceId}&country=${countryId}`;
+
   try {
+    console.log(api);
     const response = await axios.get(api);
     console.log(response.data);
     return response.data;
@@ -152,7 +150,7 @@ bot.start(async (ctx) => {
     // Send the first message
     await ctx.reply(`Welcome ${ctx.from.first_name} 👋`);
 
-    if(ctx.session.number){
+    if (ctx.session.number) {
       expireNumber(ctx.session.activationId);
     }
 
@@ -294,8 +292,6 @@ app.post("/coinbase-webhook", async (req, res) => {
     // Check the event type
     if (eventData.event.type === "charge:confirmed") {
       // Payment has been confirmed, handle it here
-
-      console.log("Payment confirmed:", eventData);
       bot.telegram.sendMessage(
         chatId,
         "Your payment has been received successfully."
@@ -319,7 +315,6 @@ app.post("/coinbase-webhook", async (req, res) => {
       // Implement your logic to process the payment confirmation
     } else if (eventData.event.type === "charge:failed") {
       bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
-      // Payment has failed (canceled), handle it here
       await bot.telegram.sendMessage(
         chatId,
         "Would you like to request your number?",
@@ -351,11 +346,11 @@ app.post("/coinbase-webhook", async (req, res) => {
 
 
 async function getOTP(serviceId, countryId, chatId, ctx) {
-  if(!serviceId  || !countryId  || !chatId ){
+  if (!chatId) {
     return
   }
   try {
-    if(ctx.session.number || ctx.session.activationId){
+    if (ctx.session.number || ctx.session.activationId) {
       expireNumber(ctx.session.activationId);
     }
     let res = await getNumber(serviceId, countryId);
@@ -376,17 +371,17 @@ async function getOTP(serviceId, countryId, chatId, ctx) {
     bot.telegram.sendMessage(chatId, `Your number is +${number}`);
 
     const otpInterval = setInterval(async () => {
-      if(ctx.session.status.startsWith("STATUS_WAIT_CODE") || !ctx.session.status){
-      let { activationCode, status } = await getActivationStatus(activationId);
-      ctx.session.status = status;
-      if (activationCode) {
-        await bot.telegram.sendMessage(
-          chatId,
-          `Your OTP is: ${activationCode}`
-        );
-        clearInterval(otpInterval);
+      if (ctx.session.status.startsWith("STATUS_WAIT_CODE") || !ctx.session.status) {
+        let { activationCode, status } = await getActivationStatus(activationId);
+        ctx.session.status = status;
+        if (activationCode) {
+          await bot.telegram.sendMessage(
+            chatId,
+            `Your OTP is: ${activationCode}`
+          );
+          clearInterval(otpInterval);
+        }
       }
-    }
     }, 10000);
 
     // Set a timeout to stop checking after 1 minute

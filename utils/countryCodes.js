@@ -590,7 +590,7 @@ const major = [
   "Philippines",
   "Australia",
   "Canada",
-  "United Kingdom",
+  "Ukraine",
   "Germany",
   "Japan",
   "France",
