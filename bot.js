@@ -4,6 +4,9 @@ require("dotenv").config();
 const coinbaseApiKey = process.env.COINBASE_API_KEY;
 const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+bot.telegram.setWebhook("https://dull-rose-abalone-gown.cyclic.cloud/");
+
 bot.use(session({
   defaultSession: () => ({
     chatId: "",
@@ -19,6 +22,11 @@ bot.use(session({
   })
 }));
 
+// Start the bot
+bot.launch().then(() => {
+  console.log("Bot is up and running!");
+});
+
 const api_key = process.env.GRIZZLY_API_KEY;
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -28,7 +36,7 @@ app.use(express.static('public'));
 const port = process.env.port || 3000;
 const { major, countryCodes } = require("./utils/countryCodes");
 const { majorServices, serviceCodes } = require("./utils/serviceCodes");
-const url = "http://localhost:3000";
+const url = "https://dull-rose-abalone-gown.cyclic.cloud";
 
 async function createCoinbaseCharge(cost, chatId, countryId, serviceId) {
   try {
