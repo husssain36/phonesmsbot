@@ -5,6 +5,7 @@ const coinbaseApiKey = process.env.COINBASE_API_KEY;
 const coinbaseApiUrl = process.env.COINBASE_URL;
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+bot.telegram.setWebhook("https://dull-rose-abalone-gown.cyclic.cloud/")
 
 bot.use(session({
   defaultSession: () => ({
