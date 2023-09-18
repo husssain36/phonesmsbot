@@ -445,6 +445,11 @@ const expireNumber = async (activationId) => {
   }
 };
 
+app.get('/', (req, res) => {
+  // Send a response or serve an HTML page
+  res.send('Welcome to the Telegram Bot Webhook Server');
+});
+
 app.get('/coinbase-webhook', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'coinbase-webhook.html'));
 });
