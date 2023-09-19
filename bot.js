@@ -289,6 +289,11 @@ app.post("/coinbase-webhook", async (req, res) => {
     const countryId = eventData.event.data.metadata.countryId;
     const serviceId = eventData.event.data.metadata.serviceId;
     console.log(chatId);
+
+    if(!chatId){
+        console.log("Chat Id is not defined");
+        return;
+    }
     // Check the event type
     if (eventData.event.type === "charge:confirmed") {
       // Payment has been confirmed, handle it here
@@ -333,7 +338,7 @@ app.post("/coinbase-webhook", async (req, res) => {
       );
     } else {
       // Handle other Coinbase Commerce events here
-      //   console.log('Other Coinbase event:', eventData);
+        console.log("Chat Id is not defined");
     }
 
     // Respond with a success status
