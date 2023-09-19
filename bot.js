@@ -18,6 +18,7 @@ bot.use(session({
     status: "",
     paymentButtonClicked: false,
     number: "",
+    paymentLinkExists: false,
   })
 }));
 
@@ -146,6 +147,10 @@ const getActivationStatus = async (activationId) => {
 
 bot.start(async (ctx) => {
   ctx.session.chatId = ctx.chat.id;
+  if(ctx.session.paymentLinkExists === true){
+    ctx.reply(`An existing session is active please cancel the payment in order to start a new session`);
+    return;
+  }
   try {
     // Send the first message
     await ctx.reply(`Welcome ${ctx.from.first_name} 👋`);
@@ -162,6 +167,8 @@ bot.start(async (ctx) => {
     ctx.session.activationId = "";
     ctx.session.status = "";
     ctx.session.paymentButtonClicked = false;
+    ctx.session.number = "";
+    ctx.session.paymentLinkExists = false;
 
     // Add a delay between messages (for example, 1 second)
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -263,7 +270,7 @@ bot.action("make_payment", async (ctx) => {
   try {
     // Check if the user sent a command to initiate a payment
     const paymentLink = await createCoinbaseCharge(ctx.session.cost, ctx.session.chatId, ctx.session.countryId, ctx.session.serviceId);
-
+    ctx.session.paymentLinkExists = true;
     if (paymentLink) {
       // Send the payment link to the user
       await ctx.reply(
@@ -322,14 +329,14 @@ app.post("/coinbase-webhook", async (req, res) => {
       bot.telegram.sendMessage(chatId, "Your payment has been cancelled.");
       await bot.telegram.sendMessage(
         chatId,
-        "Would you like to request your number?",
+        "Would you like to start a new session",
         {
           reply_markup: {
             inline_keyboard: [
               [
                 {
-                  text: "Request Number",
-                  callback_data: "request_number",
+                  text: "start",
+                  callback_data: "start_again",
                 },
               ],
             ],
@@ -348,8 +355,11 @@ app.post("/coinbase-webhook", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
-
+bot.action("start_again", async (ctx) => {
+  ctx.session.paymentLinkExists = false;
+  ctx.editMessageText('A new session has been started');
+  ctx.reply("/start");
+});
 async function getOTP(serviceId, countryId, chatId, ctx) {
   if (!chatId) {
     return
